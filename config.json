@@ -1,0 +1,15 @@
+{
+    "text": {
+        "title": {
+			"X":        49,
+			"Y":        27,
+			"fontSize": 60,
+			"fontPath": "YGODIY-Chinese.ttf",
+            "fg":       "white",
+            "content": "清晨的祝语"
+        }
+    },
+    "image": {
+
+    }
+}
