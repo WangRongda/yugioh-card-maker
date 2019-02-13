@@ -5,11 +5,39 @@
 			"Y":        27,
 			"fontSize": 60,
 			"fontPath": "YGODIY-Chinese.ttf",
-            "fg":       "white",
+            "fg":       "White",
             "content": "清晨的祝语"
+        },
+        "spell": {
+			"X":        333,
+			"Y":        101,
+			"fontSize": 45,
+			"fontPath": "YGODIY-Chinese.ttf",
+            "fg":       "Black",
+            "content": "【魔法卡】"
+        },
+        "describe1": {
+			"X":        51,
+			"Y":        641,
+			"fontSize": 23,
+			"fontPath": "YGODIY-Chinese.ttf",
+            "fg":       "Black",
+            "content": "当你觉得自己起得很早时，可以打出这张手牌表示"
+        },
+        "describe2": {
+			"X":        51,
+			"Y":        665,
+			"fontSize": 23,
+			"fontPath": "YGODIY-Chinese.ttf",
+            "fg":       "Black",
+            "content": "自己起得很早，"
         }
     },
     "image": {
-
+        "center": {
+            "X": 0,
+            "Y": 0,
+            "path": "sub-image.jpg"
+        }
     }
 }

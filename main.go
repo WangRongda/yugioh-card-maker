@@ -2,8 +2,10 @@ package main
 
 import (
 	"bufio"
+	"encoding/json"
 	"fmt"
 	"image"
+	"image/color"
 	"image/draw"
 	"image/png"
 	"io/ioutil"
@@ -11,59 +13,65 @@ import (
 	"os"
 
 	"github.com/golang/freetype"
-	"golang.org/x/image/font"
 )
+
+// Config Read from config.json
+type Config struct {
+	Text  map[string]texter
+	Image map[string]imager
+}
+
+var colorStr = map[string]uint16{
+	"White": 0xffff,
+	"Black": 0,
+}
 
 type texter struct {
 	X        int
 	Y        int
-	fontSize int    //px
-	fontPath string //font style file
-	fg       *image.Uniform
+	FontSize float64 //px
+	FontPath string  //font style file
+	FG       string
+	Content  string
+}
+type imager struct {
+	X    int
+	Y    int
+	Path string
 }
 
-// card template
-type templater struct {
-	background string //image path
-	title      texter
-	cardType   texter
-	image      string
-	describe   texter
+func errPanic(err error, args ...interface{}) {
+	if nil != err {
+		fmt.Println(args...)
+		panic(err)
+	}
 }
 
 func main() {
-	//魔法卡
-	spellCard := templater{
-		background: "spell-template.png",
-		title: texter{
-			X:        49,
-			Y:        27,
-			fontSize: 60,
-			fontPath: "YGODIY-Chinese.ttf",
-			fg:       image.White,
-		},
-		cardType: texter{},
-		image:    "",
-		describe: texter{},
+	jsonBytes, err := ioutil.ReadFile("config.json")
+	errPanic(err)
+	config := Config{}
+	errPanic(json.Unmarshal(jsonBytes, &config))
+
+	if len(os.Args) < 2 {
+		panic("Need 1 argument: card template file path")
 	}
-	raw, err := os.Open("spell-template.png")
-	if err != nil {
-		panic(err)
-	}
-	defer raw.Close()
-	img, err := png.Decode(raw)
-	if err != nil {
-		panic(err)
-	}
-	rgba, ok := img.(*image.RGBA)
+	cardTemplateFd, err := os.Open(os.Args[1])
+	errPanic(err)
+	defer cardTemplateFd.Close()
+	cardTemplateImage, _, err := image.Decode(cardTemplateFd)
+	errPanic(err)
+	// cardTemplateRGBA := image.NewRGBA(image.Rectangle{image.Point{0, 0}, cardTemplateImage.Bounds().Size()})
+	cardTemplateRGBA, ok := cardTemplateImage.(*image.RGBA)
 	if !ok {
 		panic("image to rgba fail")
 	}
-	if err != nil {
-		panic(err)
+	for _, text := range config.Text {
+		addLabel(cardTemplateRGBA, text)
 	}
-	x, y := 49, 27
-	addLabel(rgba, x, y, "清晨的祝语", image.White)
+	for _, subImg := range config.Image {
+		appendImg(cardTemplateRGBA, subImg)
+	}
 
 	outFile, err := os.Create("out.png")
 	if err != nil {
@@ -72,44 +80,42 @@ func main() {
 	}
 	defer outFile.Close()
 	b := bufio.NewWriter(outFile)
-	err = png.Encode(b, img)
-	if err != nil {
-		log.Println(err)
-		os.Exit(1)
-	}
+	err = png.Encode(b, cardTemplateRGBA)
+	errPanic(err)
 	err = b.Flush()
-	if err != nil {
-		log.Println(err)
-		os.Exit(1)
-	}
+	errPanic(err)
 	fmt.Println("Wrote out.png OK.")
 }
 
-func addLabel(img *image.RGBA, x, y int, label string, fg *image.Uniform) {
+func addLabel(img *image.RGBA, text texter) {
 	// Read the font data.
-	fontBytes, err := ioutil.ReadFile("YGODIY-Chinese.ttf")
-	if err != nil {
-		log.Println(err)
-		return
-	}
+	fontBytes, err := ioutil.ReadFile(text.FontPath)
+	errPanic(err, text)
 	f, err := freetype.ParseFont(fontBytes)
-	if err != nil {
-		log.Println(err)
-		return
-	}
+	errPanic(err)
 	c := freetype.NewContext()
-	draw.Draw(img, img.Bounds(), img, image.ZP, draw.Src)
+	// draw.Draw(img, img.Bounds(), img, image.ZP, draw.Src)
 	c.SetFont(f)
-	c.SetFontSize(60)
+	c.SetFontSize(text.FontSize)
 	c.SetClip(img.Bounds())
 	c.SetDst(img)
-	c.SetSrc(fg)
-	c.SetHinting(font.HintingNone)
-	size := 60.0 // font size in pixels
-	pt := freetype.Pt(x, y+int(c.PointToFixed(size)>>6))
-
-	if _, err := c.DrawString(label, pt); err != nil {
-		panic(err)
-		// handle error
+	fg, ok := colorStr[text.FG]
+	if !ok {
+		panic("FG must White or Black")
 	}
+	c.SetSrc(image.NewUniform(color.Gray16{fg}))
+	// c.SetHinting(font.HintingNone)
+	pt := freetype.Pt(text.X, text.Y+int(c.PointToFixed(text.FontSize)>>6))
+	_, err = c.DrawString(text.Content, pt)
+	errPanic(err)
+}
+
+func appendImg(rgba *image.RGBA, subImg imager) {
+	imageFD, err := os.Open(subImg.Path)
+	errPanic(err)
+	subImgImage, _, err := image.Decode(imageFD)
+	errPanic(err, subImg)
+	sp2 := image.Point{rgba.Bounds().Dx(), 0}
+	r2 := image.Rectangle{sp2, sp2.Add(subImgImage.Bounds().Size())}
+	draw.Draw(rgba, r2, subImgImage, image.Point{0, 0}, draw.Src)
 }
