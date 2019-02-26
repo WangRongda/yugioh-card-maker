@@ -35,8 +35,10 @@
     },
     "image": {
         "center": {
-            "X": 0,
-            "Y": 0,
+            "X": 82,
+            "Y": 178,
+            "width": 426,
+            "height": 426,
             "path": "sub-image.jpg"
         }
     }
